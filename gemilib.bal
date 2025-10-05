@@ -1,5 +1,4 @@
 import ballerina/http;
-import ballerina/regex;
 
 public type ChatMessage record {|
     string role; 
@@ -19,8 +18,8 @@ public type SearchConfig record {|
 |};
 
 public type ChatConfig record {|
-    string systemPrompt; 
-    string searchClassificationPrompt;
+    string systemPrompt;
+    string searchClassificationPrompt; 
     string responseFormatInstructions?; 
     boolean autoSearch = true; 
 |};
@@ -108,7 +107,7 @@ Return ONLY one of these two values: "SEARCH_NEEDED" or "NO_SEARCH"`;
 
         string? formatInstructions = chatConfig.responseFormatInstructions;
         if formatInstructions is string {
-            prompt = prompt + formatInstructions + "\n\n";
+            prompt += formatInstructions + "\n\n";
         }
 
         if conversationHistory is ChatMessage[] && conversationHistory.length() > 0 {
@@ -209,13 +208,34 @@ JSON array:`;
         string promptTemplate
     ) returns string|error {
         
-        string prompt = regex:replaceAll(promptTemplate, "\\{USER_QUERY\\}", userQuery);
-        prompt = regex:replaceAll(prompt, "\\{TABLE_NAME\\}", searchConfig.tableName);
-        prompt = regex:replaceAll(prompt, "\\{SEARCH_COLUMNS\\}", searchConfig.searchColumns.toString());
-        prompt = regex:replaceAll(prompt, "\\{RESULTS\\}", results.toJsonString());
+        string prompt = promptTemplate;
+        
+        prompt = self.replaceString(prompt, "{USER_QUERY}", userQuery);
+        prompt = self.replaceString(prompt, "{TABLE_NAME}", searchConfig.tableName);
+        prompt = self.replaceString(prompt, "{SEARCH_COLUMNS}", searchConfig.searchColumns.toString());
+        prompt = self.replaceString(prompt, "{RESULTS}", results.toJsonString());
 
         return check self.callAI(prompt);
     }
+    
+    private isolated function replaceString(string original, string target, string replacement) returns string {
+        string result = "";
+        int targetLen = target.length();
+        int i = 0;
+        
+        while i < original.length() {
+            if i + targetLen <= original.length() && original.substring(i, i + targetLen) == target {
+                result += replacement;
+                i += targetLen;
+            } else {
+                result += original.substring(i, i + 1);
+                i += 1;
+            }
+        }
+        
+        return result;
+    }
+
     public isolated function scrape(
         string url,
         string? instruction = ()
@@ -279,11 +299,23 @@ Summary:`;
     public isolated function sanitizeInput(string input) returns string {
         string sanitized = input.trim();
         
-        while sanitized.includes("  ") {
-            sanitized = regex:replaceAll(sanitized, "  ", " ");
+        string result = "";
+        boolean prevSpace = false;
+        
+        foreach int i in 0 ..< sanitized.length() {
+            string char = sanitized.substring(i, i + 1);
+            if char == " " {
+                if !prevSpace {
+                    result += char;
+                }
+                prevSpace = true;
+            } else {
+                result += char;
+                prevSpace = false;
+            }
         }
         
-        return sanitized;
+        return result;
     }
 
     public isolated function hasResults(json results) returns boolean {
@@ -294,7 +326,7 @@ Summary:`;
     }
 }
 
-isolated function cleanJsonResponse(string response) returns string {
+public isolated function cleanJsonResponse(string response) returns string {
     string cleaned = response.trim();
     
     if cleaned.startsWith("```json") {

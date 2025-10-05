@@ -96,7 +96,7 @@ This method fetches the HTML, sanitizes it, and generates an AI summary or custo
 The library is initialized with API credentials and optional parameters for model configuration.
 
 ```ballerina
-GemiLib gemi = check new GemiLib(
+ gemilib:GemiLib gemi = check new (
     apiKey = "YOUR_API_KEY",
     modelName = "gemini-2.0-flash",
     baseUrl = "https://generativelanguage.googleapis.com",
@@ -135,7 +135,7 @@ All major functions return `string|error` or `error?`, allowing developers to gr
 import ballerina/io;
 import adhishtanaka/gemilib;
 
-GemiLib gemi = check new GemiLib("YOUR_API_KEY");
+ gemilib:GemiLib gemi = check new ("YOUR_API_KEY");
 
 ChatConfig cfg = {
     systemPrompt: "You are a helpful assistant.",
