@@ -2,7 +2,7 @@
 
 **Unofficial Gemini API Client for Ballerina**
 **Package:** `adhishtanaka/gemilib`
-**Version:** 1.0.0
+**Version:** 0.1.1
 
 ## Overview
 

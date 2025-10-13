@@ -47,6 +47,13 @@ public isolated class GemiLib {
         self.jinaClient = check new ("https://r.jina.ai");
     }
 
+    # Sends a chat message to the AI model with optional conversation history and auto-search functionality.
+#
+# + userMessage - The current user message to process.
+# + chatConfig - Configuration including system prompt, search prompt, and response formatting.
+# + conversationHistory - Optional array of previous chat messages.
+# + queryFunction - Optional function to perform keyword-based database search.
+# + return - AI-generated response string, or an error if processing fails.
     public isolated function chat(
         string userMessage,
         ChatConfig chatConfig,
@@ -127,7 +134,12 @@ Return ONLY one of these two values: "SEARCH_NEEDED" or "NO_SEARCH"`;
 
         return check self.callAI(prompt);
     }
-
+# Sends a simple chat message to the AI model using only the system prompt.
+#
+# + userMessage - The current user message.
+# + systemPrompt - System-level instruction for the AI.
+# + conversationHistory - Optional array of previous chat messages.
+# + return - AI-generated response string, or an error if processing fails.
     public isolated function simpleChat(
         string userMessage,
         string systemPrompt,
@@ -148,7 +160,13 @@ Return ONLY one of these two values: "SEARCH_NEEDED" or "NO_SEARCH"`;
 
         return check self.callAI(prompt);
     }
-
+# Executes a keyword-based query with search results from a database or collection.
+#
+# + userQuery - The user’s search query string.
+# + searchConfig - Configuration specifying the table, columns, and max results.
+# + responsePromptTemplate - AI prompt template for formatting the final response.
+# + queryFunction - Function that executes the search using extracted keywords.
+# + return - A QueryResult containing keywords, results, and the AI-formatted response.
     public isolated function query(
         string userQuery,
         SearchConfig searchConfig,
@@ -177,7 +195,11 @@ Return ONLY one of these two values: "SEARCH_NEEDED" or "NO_SEARCH"`;
             response: response
         };
     }
-
+# Extracts 1–3 relevant keywords from user input for database searching.
+#
+# + userInput - The user query text.
+# + customPrompt - Optional prompt to customize AI keyword extraction.
+# + return - Array of extracted keywords, or an error if extraction fails.
     public isolated function extractKeywords(
         string userInput,
         string? customPrompt = ()
@@ -235,7 +257,11 @@ JSON array:`;
         
         return result;
     }
-
+# Scrapes and summarizes content from a web page.
+#
+# + url - The URL of the web page to scrape.
+# + instruction - Optional instruction for summarization or analysis.
+# + return - AI-generated summary string, or an error if scraping or AI processing fails.
     public isolated function scrape(
         string url,
         string? instruction = ()
@@ -266,6 +292,10 @@ Summary:`;
         return htmlContent;
     }
 
+# Sends a freeform prompt directly to the AI model.
+#
+# + prompt - The instruction or message to send to the AI.
+# + return - AI-generated response string, or an error if processing fails.
     public isolated function ask(string prompt) returns string|error {
         return check self.callAI(prompt);
     }
