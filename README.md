@@ -2,7 +2,7 @@
 
 **Unofficial Gemini API Client for Ballerina**
 **Package:** `adhishtanaka/gemilib`
-**Version:** 0.1.2
+**Version:** 0.1.3
 
 ## Overview
 
@@ -70,6 +70,25 @@ io:println(output);
 ```
 
 ---
+
+## Keyword Extraction
+
+The extractKeywords() method isolates the most relevant search terms from natural language input using the AI model.
+
+```ballerina
+import ballerina/io;
+import adhishtanaka/gemilib;
+
+ gemilib:GemiLib gemi = check new (
+    apiKey = "YOUR_API_KEY",
+    modelName = "gemini-2.5-flash",
+    baseUrl = "https://generativelanguage.googleapis.com",
+    temperature = 0.7,
+    maxOutputTokens = 2048
+);
+string[] terms = check gemi.extractKeywords("best tea farms near Kandy");
+io:println(terms);
+```
 
 ## Web Scraping
 
