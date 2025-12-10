@@ -5,24 +5,6 @@ public type ChatMessage record {|
     string content;
 |};
 
-public type QueryResult record {|
-    string[] keywords;
-    json results;
-    string response;
-|};
-
-public type SearchConfig record {|
-    string tableName;
-    string[] searchColumns;
-    int maxResults = 10;
-|};
-
-public type ChatConfig record {|
-    string systemPrompt;
-    string searchClassificationPrompt; 
-    string responseFormatInstructions?; 
-    boolean autoSearch = true; 
-|};
 
 public isolated class GemiLib {
     private final http:Client aiClient;
@@ -34,7 +16,7 @@ public isolated class GemiLib {
 
     public isolated function init(
         string apiKey,
-        string modelName = "gemini-2.0-flash",
+        string modelName = "gemini-2.5-flash",
         string baseUrl = "https://generativelanguage.googleapis.com",
         float temperature = 0.7,
         int maxOutputTokens = 2048
@@ -45,47 +27,6 @@ public isolated class GemiLib {
         self.maxOutputTokens = maxOutputTokens;
         self.aiClient = check new (baseUrl);
         self.jinaClient = check new ("https://r.jina.ai");
-    }
-
-    # Sends a chat message to the AI model with optional conversation history and auto-search functionality.
-#
-# + userMessage - The current user message to process.
-# + chatConfig - Configuration including system prompt, search prompt, and response formatting.
-# + conversationHistory - Optional array of previous chat messages.
-# + queryFunction - Optional function to perform keyword-based database search.
-# + return - AI-generated response string, or an error if processing fails.
-    public isolated function chat(
-        string userMessage,
-        ChatConfig chatConfig,
-        ChatMessage[]? conversationHistory = (),
-        (isolated function (string[]) returns json|error)? queryFunction = ()
-    ) returns string|error {
-        
-        json? searchResults = ();
-        
-        if chatConfig.autoSearch && queryFunction is isolated function (string[]) returns json|error {
-            boolean needsSearch = check self.classifySearchIntent(
-                userMessage,
-                chatConfig.searchClassificationPrompt
-            );
-
-            if needsSearch {
-                string[] keywords = check self.extractKeywords(userMessage);
-                
-                if keywords.length() > 0 {
-                    searchResults = check queryFunction(keywords);
-                }
-            }
-        }
-
-        string response = check self.generateChatResponse(
-            userMessage,
-            chatConfig,
-            conversationHistory,
-            searchResults
-        );
-
-        return response;
     }
 
     private isolated function classifySearchIntent(
@@ -103,37 +44,6 @@ Return ONLY one of these two values: "SEARCH_NEEDED" or "NO_SEARCH"`;
         return classification.trim().toUpperAscii().includes("SEARCH");
     }
 
-    private isolated function generateChatResponse(
-        string userMessage,
-        ChatConfig chatConfig,
-        ChatMessage[]? conversationHistory,
-        json? searchResults
-    ) returns string|error {
-        
-        string prompt = chatConfig.systemPrompt + "\n\n";
-
-        string? formatInstructions = chatConfig.responseFormatInstructions;
-        if formatInstructions is string {
-            prompt += formatInstructions + "\n\n";
-        }
-
-        if conversationHistory is ChatMessage[] && conversationHistory.length() > 0 {
-            prompt += "Previous conversation:\n";
-            foreach ChatMessage msg in conversationHistory {
-                prompt += msg.role + ": " + msg.content + "\n";
-            }
-            prompt += "\n";
-        }
-
-        if searchResults is json {
-            prompt += string `Database search results: ${searchResults.toJsonString()}\n\n`;
-        }
-
-        prompt += string `Current user message: "${userMessage}"\n\n`;
-        prompt += "Respond:";
-
-        return check self.callAI(prompt);
-    }
 # Sends a simple chat message to the AI model using only the system prompt.
 #
 # + userMessage - The current user message.
@@ -159,41 +69,6 @@ Return ONLY one of these two values: "SEARCH_NEEDED" or "NO_SEARCH"`;
         prompt += string `User: "${userMessage}"\n\nRespond:`;
 
         return check self.callAI(prompt);
-    }
-# Executes a keyword-based query with search results from a database or collection.
-#
-# + userQuery - The user’s search query string.
-# + searchConfig - Configuration specifying the table, columns, and max results.
-# + responsePromptTemplate - AI prompt template for formatting the final response.
-# + queryFunction - Function that executes the search using extracted keywords.
-# + return - A QueryResult containing keywords, results, and the AI-formatted response.
-    public isolated function query(
-        string userQuery,
-        SearchConfig searchConfig,
-        string responsePromptTemplate,
-        isolated function (string[]) returns json|error queryFunction
-    ) returns QueryResult|error {
-        
-        string[] keywords = check self.extractKeywords(userQuery);
-        
-        if keywords.length() == 0 {
-            return error("Could not extract meaningful keywords from query");
-        }
-
-        json results = check queryFunction(keywords);
-        
-        string response = check self.generateQueryResponse(
-            userQuery,
-            results,
-            searchConfig,
-            responsePromptTemplate
-        );
-        
-        return {
-            keywords: keywords,
-            results: results,
-            response: response
-        };
     }
 # Extracts 1–3 relevant keywords from user input for database searching.
 #
@@ -223,22 +98,6 @@ JSON array:`;
         return keywords;
     }
 
-    private isolated function generateQueryResponse(
-        string userQuery,
-        json results,
-        SearchConfig searchConfig,
-        string promptTemplate
-    ) returns string|error {
-        
-        string prompt = promptTemplate;
-        
-        prompt = self.replaceString(prompt, "{USER_QUERY}", userQuery);
-        prompt = self.replaceString(prompt, "{TABLE_NAME}", searchConfig.tableName);
-        prompt = self.replaceString(prompt, "{SEARCH_COLUMNS}", searchConfig.searchColumns.toString());
-        prompt = self.replaceString(prompt, "{RESULTS}", results.toJsonString());
-
-        return check self.callAI(prompt);
-    }
     
     private isolated function replaceString(string original, string target, string replacement) returns string {
         string result = "";
